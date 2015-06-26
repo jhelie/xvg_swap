@@ -13,7 +13,7 @@ import os.path
 # create parser
 #=========================================================================================
 version_nb = "0.0.1"
-parser = argparse.ArgumentParser(prog = 'xvg_concatenate', usage='', add_help = False, formatter_class = argparse.RawDescriptionHelpFormatter, description =\
+parser = argparse.ArgumentParser(prog = 'xvg_swap', usage='', add_help = False, formatter_class = argparse.RawDescriptionHelpFormatter, description =\
 '''
 **********************************************
 v''' + version_nb + '''
@@ -46,9 +46,8 @@ Other options
 
 #options
 parser.add_argument('-f', nargs='+', dest='xvgfilenames', help=argparse.SUPPRESS, required=True)
-parser.add_argument('--index', nargs=1, dest='indices', default=['none'], help=argparse.SUPPRESS)
-parser.add_argument('--caption', nargs=1, dest='captions', default=['none'], help=argparse.SUPPRESS)
-parser.add_argument('--log', dest='log', action='store_true', help=argparse.SUPPRESS)
+parser.add_argument('--indices', nargs=1, dest='indices', default=['none'], help=argparse.SUPPRESS)
+parser.add_argument('--captions', nargs=1, dest='captions', default=['none'], help=argparse.SUPPRESS)
 parser.add_argument('--comments', nargs=1, dest='comments', default=['@,#'], help=argparse.SUPPRESS)
 
 #other options
@@ -61,7 +60,7 @@ parser.add_argument('-h','--help', action='help', help=argparse.SUPPRESS)
 
 args = parser.parse_args()
 args.indices = args.indices[0]
-args.captions = args.caption[0]
+args.captions = args.captions[0]
 args.comments = args.comments[0].split(',')
 
 #=========================================================================================
@@ -133,9 +132,6 @@ def load_xvg():															#DONE
 	label_yaxis = "y axis"
 	
 	for f_index in range(0,len(args.xvgfilenames)):
-		progress = '\r -reading file ' + str(f_index+1) + '/' + str(len(args.xvgfilenames)) + '                      '  
-		sys.stdout.flush()
-		sys.stdout.write(progress)
 		filename = args.xvgfilenames[f_index]
 		tmp_nb_rows_to_skip = 0
 		#get file content
@@ -188,11 +184,11 @@ def load_xvg():															#DONE
 					label_yaxis = line.split("label ")[1]
 
 		#get all meta data
-		data[f_index] = lines[:tmp_nb_rows_to_skip]
+		meta[f_index] = lines[:tmp_nb_rows_to_skip]
 		
 		#switch caption
-		data[f_index][l_index_1] = "@ s" + str(f_col_to_use_1)) + " legend \"" + str(f_col_legend_2)) + "\"\n"
-		data[f_index][l_index_2] = "@ s" + str(f_col_to_use_2)) + " legend \"" + str(f_col_legend_1)) + "\"\n"
+		meta[f_index][l_index_1] = "@ s" + str(f_col_to_use_1) + " legend \"" + str(f_col_legend_2) + "\"\n"
+		meta[f_index][l_index_2] = "@ s" + str(f_col_to_use_2) + " legend \"" + str(f_col_legend_1) + "\"\n"
 				
 		#get all data in the file
 		data[f_index] = np.loadtxt(filename, skiprows = tmp_nb_rows_to_skip)
@@ -206,6 +202,8 @@ def load_xvg():															#DONE
 			print "\nError: no column with caption \"" + str(f_col_legend_1) + "\" or \"" + str(f_col_legend_2) + "\" could be found in " + str(filename) + "."
 			sys.exit(1)
 
+		print ' reading file ' + str(f_index+1) + '/' + str(len(args.xvgfilenames)) + ': switching columns \"' + str(f_col_legend_1) + '\" and \"'+ str(f_col_legend_2) + '\"    '  
+
 		#switch columns
 		data[f_index][:,[f_col_to_use_1 + 1, f_col_to_use_2 + 1]] = data[f_index][:,[f_col_to_use_2 + 1, f_col_to_use_1 + 1]]
 			
@@ -217,14 +215,11 @@ def load_xvg():															#DONE
 
 def write_xvg():
 
-	#open files
 	for f_index in range(0,len(args.xvgfilenames)):
+		#open file
 		filename = args.xvgfilenames[f_index]
 		filename_xvg = os.getcwd() + '/' + str(filename[:-4]) + '_swap.xvg'
 		output_xvg = open(filename_xvg, 'w')
-		
-		#general header
-		output_xvg.write("# [written by xvg_swap v" + str(version_nb) + "]\n")
 		
 		#meta
 		for l_index in range(0,len(meta[f_index])):
@@ -234,7 +229,8 @@ def write_xvg():
 		for r_index in range(0, np.shape(data[f_index])[0]):
 			results = str(data[f_index][r_index, 0])
 			for c_index in range(1, np.shape(data[f_index])[1]):
-				results += "	" + str(data[f_index][r_index, c_index])
+				results += "	{:.6e}".format(data[f_index][r_index, c_index])
+											
 			output_xvg.write(results + "\n")		
 		output_xvg.close()	
 	
@@ -244,15 +240,15 @@ def write_xvg():
 # MAIN
 ##########################################################################################
 
-print "\nReading files..."
+print "\nReading file(s)..."
 load_xvg()
 
-print "\n\nWriting concatenated file..."
+print "\nWriting swapped file(s)..."
 write_xvg()
 
 #=========================================================================================
 # exit
 #=========================================================================================
-print "\nFinished successfully! Check result in file '" + args.output_file + ".xvg'."
+print "\nFinished successfully!"
 print ""
 sys.exit(0)
